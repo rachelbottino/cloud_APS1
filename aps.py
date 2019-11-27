@@ -2,15 +2,23 @@
 import six
 from flask import Flask, jsonify, abort, request, make_response, url_for
 import json
-from flaskext.mysql import MySQL
+#from flaskext.mysql import MySQL
 import pymysql
+import mysql.connector
+from mysql.connector import Error
+from mysql.connector import errorcode
 
 app = Flask(__name__, static_url_path="")
-mysql = MySQL()
+#mysql = MySQL()
 
 #MySQL
-app.config['MYSQL_DATABASE_DB'] = 'projeto'
-app.config['MYSQL_DATABASE_HOST'] = 'localhost'
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="rachelpbm",
+  passwd="adgjlra1",
+  database="projeto",
+  charset="ascii"
+)
 
 @app.errorhandler(400)
 def bad_request(error):
@@ -23,27 +31,24 @@ def not_found(error):
 
 @app.route('/Tarefa', methods=['GET'])
 def selecinaTarefas():
+    mycursor = mydb.cursor()
     sql = "SELECT * FROM tarefa"
-    conn = mysql.connect()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
-    cursor.execute(sql)
-    rows = cursor.fetchall()
+    mycursor.execute(sql)
+    rows = mycursor.fetchall()
     resp = jsonify(rows)
-    res.status_code = 200
-    cursor.close()
-    conn.close()
     return resp
 
 @app.route('/Tarefa/<int:tarefa_id>', methods=['GET'])
 def selecinaTarefa(tarefa_id):
-    conn = mysql.connect()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
-    cursor.execute("SELECT * FROM tarefa WHERE id = %s",tarefa_id)
-    rows = cursor.fetchall()
+    mycursor = mydb.cursor(prepared=True)
+    print("Tarefa id: ",type(tarefa_id))
+    sql = "SELECT * FROM tarefa WHERE id="+str(tarefa_id)
+    print(sql)
+    mycursor.execute(sql)
+    rows = mycursor.fetchall()
+    print(json.dumps(rows))
     resp = jsonify(rows)
-    res.status_code = 200
-    cursor.close()
-    conn.close()
+    print(resp)
     return resp
 
 
@@ -55,16 +60,13 @@ def criaTarefa():
         abort(400)
     _titulo = request.json['titulo']
     _descricao = request.json.get('descricao', "")
+    mycursor = mydb.cursor()
     sql = "INSERT INTO tarefa(titulo, descricao) VALUES(%s, %s)"
     data = (_titulo, _descricao)
-    conn = mysql.connect()
-    cursor = conn.cursor()
-    cursor.execute(sql, data)
-    conn.commit()
+    mycursor.execute(sql, data)
+    mydb.commit()
     resp.status_code = 200
-    cursor.close() 
-    conn.close()
-    print("Tarefa adicionada")
+    print(mycursor.rowcount,"Tarefa adicionada")
     return resp
 
 @app.route('/Tarefa/<int:tarefa_id>', methods=['PUT'])
@@ -80,24 +82,20 @@ def atualizaTarefa(tarefa_id):
         abort(400)
     _titulo = request.json['titulo']
     _descricao = request.json.get('descricao', "")
+    mycursor = mydb.cursor()
     sql = "UPDATE tarefa SET(titulo, descricao) VALUES(%s, %s)"
     data = (_titulo, _descricao)
-    conn = mysql.connect()
-    cursor = conn.cursor()
-    cursor.execute(sql, data)
-    conn.commit()
+    mycursor.execute(sql, data)
+    mydb.commit()
     resp.status_code = 200
-    cursor.close() 
-    conn.close()
-    print("Tarefa adicionada")
+    print(mycursor.rowcount, "Tarefa atualizada")
     return resp
 
 
 @app.route('/Tarefa/<int:tarefa_id>', methods=['DELETE'])
 def deletaTarefa(tarefa_id):
-    conn = mysql.connect()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
-    cursor.execute("DELETE * FROM tarefa WHERE id=%s",tarefa_id)
+    mycursor = mydb.cursor()
+    mycursor.execute("DELETE * FROM tarefa WHERE id=%s",tarefa_id)
     rows = cursor.fetchall()
     resp = jsonify(rows)
     resp.status_code = 200
